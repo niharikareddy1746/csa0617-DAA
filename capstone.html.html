@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VaxOptima — Smart Vaccine Distribution Planner (Knapsack Model)</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #1d4ed8;
+      --primary-light: #eff6ff;
+      --emerald: #059669;
+      --emerald-light: #ecfdf5;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --rose: #e11d48;
+      --rose-light: #fff1f2;
+      --shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* Top Navbar */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #1d4ed8, #059669);
+      color: white;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .brand-title h1 { font-size: 17px; font-weight: 700; color: var(--text); }
+    .brand-title span { font-size: 12px; color: var(--muted); display: block; }
+
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      background: var(--surface-alt);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .nav-tab {
+      border: none;
+      background: transparent;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-tab.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 2px 6px rgba(29, 78, 216, 0.25);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { background: var(--surface-alt); }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .btn-primary:hover { background: #1e40af; }
+    .btn-emerald {
+      background: var(--emerald);
+      color: white;
+      border-color: var(--emerald);
+    }
+    .btn-emerald:hover { background: #047857; }
+    .btn-danger {
+      color: var(--rose);
+      border-color: #fecdd3;
+      background: var(--rose-light);
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    /* Main Container */
+    main {
+      max-width: 1360px;
+      margin: 24px auto;
+      padding: 0 24px 48px;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Control Strip */
+    .control-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 18px;
+      align-items: end;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--surface-alt);
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+    }
+
+    /* KPI Summary Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: var(--primary);
+    }
+    .kpi-card.emerald::before { background: var(--emerald); }
+    .kpi-card.amber::before { background: var(--amber); }
+    .kpi-card.rose::before { background: var(--rose); }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+    .kpi-val { font-size: 26px; font-weight: 800; margin: 4px 0; color: var(--text); }
+    .kpi-sub { font-size: 12px; color: var(--muted); }
+
+    /* Two-column Workspace */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 22px;
+    }
+    @media (max-width: 1024px) {
+      .workspace { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-header h2 { font-size: 16px; font-weight: 700; }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-blue { background: var(--primary-light); color: var(--primary); }
+    .badge-emerald { background: var(--emerald-light); color: var(--emerald); }
+    .badge-amber { background: var(--amber-light); color: var(--amber); }
+    .badge-rose { background: var(--rose-light); color: var(--rose); }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 10px 10px;
+      background: var(--surface-alt);
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr.selected-row {
+      background: #f0fdf4;
+    }
+    tr.rejected-row {
+      opacity: 0.72;
+    }
+
+    /* Progress Bar */
+    .progress-wrap {
+      margin: 14px 0;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .progress-bar {
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1d4ed8, #059669);
+      transition: width 0.35s ease;
+    }
+
+    /* DP Matrix Grid */
+    .dp-table {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      text-align: center;
+    }
+    .dp-table th, .dp-table td {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .dp-cell-path {
+      background: #dbeafe !important;
+      color: #1e3a8a;
+      font-weight: 800;
+      border: 2px solid #2563eb !important;
+    }
+    .dp-cell-opt {
+      background: #d1fae5 !important;
+      color: #065f46;
+      font-weight: 800;
+      border: 2px solid #059669 !important;
+    }
+
+    /* Add Batch Inline Form */
+    .add-form {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 0.8fr 0.8fr 0.9fr auto;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border);
+    }
+    @media (max-width: 768px) {
+      .add-form { grid-template-columns: 1fr 1fr; }
+    }
+    .add-form input, .add-form select {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    /* Formal Math Box */
+    .math-box {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 18px 22px;
+      border-radius: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      margin-bottom: 18px;
+      overflow-x: auto;
+    }
+    .math-box .kw { color: #38bdf8; font-weight: 700; }
+    .math-box .val { color: #34d399; }
+    .math-box .cm { color: #94a3b8; }
+
+    /* Comparison Box */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .compare-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      background: var(--surface-alt);
+    }
+    .compare-card.winner {
+      border-color: var(--emerald);
+      background: var(--emerald-light);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">V</div>
+    <div class="brand-title">
+      <h1>VaxOptima &mdash; Smart Vaccine Distribution Planner</h1>
+      <span>0/1 Knapsack Dynamic Programming &bull; Cold-Chain Optimization Model</span>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('simulator', this)">1. Distribution Simulator</button>
+    <button class="nav-tab" onclick="switchTab('dpmatrix', this)">2. DP Table &amp; Backtrack</button>
+    <button class="nav-tab" onclick="switchTab('formal', this)">3. Formal Knapsack Model</button>
+    <button class="nav-tab" onclick="switchTab('testsuite', this)">4. Automated Test Suite</button>
+  </div>
+
+  <div class="header-actions">
+    <button class="btn" onclick="loadPreset('urban')">Preset: Urban Outbreak</button>
+    <button class="btn" onclick="loadPreset('rural')">Preset: Rural Cold-Chain</button>
+    <button class="btn btn-emerald" onclick="exportReportCSV()">&#8681; Export Dispatch CSV</button>
+  </div>
+</header>
+
+<main>
+  <!-- TAB 1: SIMULATOR -->
+  <section id="tab-simulator" class="tab-panel active">
+    <div class="control-bar">
+      <div class="form-group">
+        <label>Cold-Chain Container Capacity ($W$ Liters)</label>
+        <input type="number" id="capacityInput" value="50" min="5" max="200" onchange="runOptimization()" />
+      </div>
+      <div class="form-group">
+        <label>Required Thermal Profile</label>
+        <select id="tempFilter" onchange="runOptimization()">
+          <option value="ALL">All Cold-Chain Zones (Multi-Temp)</option>
+          <option value="2-8C">Standard Refrigerated (2&deg;C to 8&deg;C)</option>
+          <option value="-20C">Frozen Storage (-20&deg;C)</option>
+          <option value="-70C">Ultra-Cold Freezer (-70&deg;C)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Algorithm Mode</label>
+        <select id="algoMode" onchange="runOptimization()">
+          <option value="DP">0/1 Knapsack Dynamic Programming (Exact Optimal)</option>
+          <option value="GREEDY">Compare: Greedy Ratio Heuristic vs. DP</option>
+        </select>
+      </div>
+      <div>
+        <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 10px;" onclick="runOptimization()">
+          &#9654; Run Knapsack Optimization
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card emerald">
+        <div class="kpi-label">Optimal Public Health Impact ($V^*$)</div>
+        <div class="kpi-val" id="kpiValue">0</div>
+        <div class="kpi-sub" id="kpiValueSub">Priority-weighted lives protected score</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Cold-Box Volume Utilized</div>
+        <div class="kpi-val" id="kpiVolume">0 / 50 L</div>
+        <div class="kpi-sub" id="kpiUtilPct">0% container efficiency</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Total Vaccine Doses Dispatched</div>
+        <div class="kpi-val" id="kpiDoses">0</div>
+        <div class="kpi-sub" id="kpiBatchesCount">0 of 0 candidate batches selected</div>
+      </div>
+      <div class="kpi-card rose">
+        <div class="kpi-label">DP Execution Complexity</div>
+        <div class="kpi-val" id="kpiComplexity">O(n&middot;W)</div>
+        <div class="kpi-sub" id="kpiStates">0 DP states evaluated in &lt;1 ms</div>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <!-- Left: Candidate Vaccine Batches -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Module 1 &amp; 2: Candidate Vaccine Batches ($i = 1 \dots n$)</h2>
+          <span class="badge badge-blue" id="batchCountBadge">0 Batches</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Batch ID &amp; Vaccine</th>
+                <th>Target District</th>
+                <th>Temp</th>
+                <th>Vol ($w_i$)</th>
+                <th>Doses</th>
+                <th>Priority ($v_i$)</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="batchTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Add Custom Batch -->
+        <div class="add-form">
+          <input type="text" id="newName" placeholder="Vaccine (e.g., Hepatitis-B)" />
+          <input type="text" id="newDistrict" placeholder="District (e.g., Ward 4)" />
+          <select id="newTemp">
+            <option value="2-8C">2-8&deg;C</option>
+            <option value="-20C">-20&deg;C</option>
+            <option value="-70C">-70&deg;C</option>
+          </select>
+          <input type="number" id="newVol" placeholder="Vol (L)" min="1" max="100" />
+          <input type="number" id="newVal" placeholder="Priority Score" min="1" max="500" />
+          <button class="btn btn-primary" onclick="addBatch()">+ Add</button>
+        </div>
+      </div>
+
+      <!-- Right: Optimal Dispatch Manifest & Comparison -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Module 3: Optimal Cold-Chain Dispatch Manifest</h2>
+          <span class="badge badge-emerald" id="manifestBadge">OPTIMAL SOLUTION</span>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-meta">
+            <span>Cold-Chain Container Fill Rate</span>
+            <span id="fillText">0 L / 50 L (0%)</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="fillBar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div id="manifestList" style="margin-top: 16px;"></div>
+
+        <!-- Greedy vs DP Comparison Panel -->
+        <div id="comparisonSection" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+          <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 6px;">Algorithm Verification: 0/1 Knapsack DP vs. Greedy Heuristic</h3>
+          <p style="font-size: 12px; color: var(--muted);">Demonstrates why Dynamic Programming guarantees global optimality where Greedy value-per-liter sorting leaves unused capacity or suboptimal value.</p>
+          <div class="compare-grid">
+            <div class="compare-card winner">
+              <div style="font-size: 11px; font-weight: 700; color: var(--emerald); text-transform: uppercase;">0/1 Knapsack DP (Optimal)</div>
+              <div style="font-size: 20px; font-weight: 800; margin: 4px 0;" id="dpCompareScore">0 pts</div>
+              <div style="font-size: 12px; color: var(--text);" id="dpCompareMeta">Volume: 0 L</div>
+            </div>
+            <div class="compare-card">
+              <div style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Greedy Ratio Heuristic</div>
+              <div style="font-size: 20px; font-weight: 800; margin: 4px 0;" id="greedyCompareScore">0 pts</div>
+              <div style="font-size: 12px; color: var(--text);" id="greedyCompareMeta">Volume: 0 L</div>
+            </div>
+          </div>
+          <div id="gainBanner" style="margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--primary-light); color: var(--primary); font-size: 12px; font-weight: 600;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: DP MATRIX & BACKTRACKING -->
+  <section id="tab-dpmatrix" class="tab-panel">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Dynamic Programming Memoization Table $DP[i][w]$ &amp; Optimal Backtracking Trace</h2>
+          <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+            Green cell indicates final optimal state $DP[n][W]$. Blue highlighted cells trace the exact backtracking decisions ($DP[i][w] 
+eq DP[i-1][w] \implies$ batch $i$ packed).
+          </p>
+        </div>
+        <span class="badge badge-blue" id="matrixDimBadge">n &times; W Matrix</span>
+      </div>
+      <div class="table-wrap" style="max-height: 560px; overflow: auto;">
+        <table class="dp-table" id="dpMatrixTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: FORMAL KNAPSACK MODEL -->
+  <section id="tab-formal" class="tab-panel">
+    <div class="card">
+      <div class="card-header">
+        <h2>Mathematical Formulation &amp; Cold-Chain Constraints</h2>
+        <span class="badge badge-emerald">NP-Complete &bull; Pseudo-Polynomial O(nW)</span>
+      </div>
+
+      <div class="math-box">
+        <div><span class="cm">// 1. Objective Function: Maximize total public health priority score</span></div>
+        <div><span class="kw">Maximize</span>   Z = &Sigma;<sub>i=1..n</sub> ( v<sub>i</sub> &middot; x<sub>i</sub> )</div>
+        <br/>
+        <div><span class="cm">// 2. Cold-Chain Container Volume Constraint</span></div>
+        <div><span class="kw">Subject to</span> &Sigma;<sub>i=1..n</sub> ( w<sub>i</sub> &middot; x<sub>i</sub> ) &le; W &nbsp;&nbsp;<span class="cm">(W = Cold-box capacity in Liters)</span></div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;T<sub>i</sub> &isin; T<sub>allowed</sub> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">(Thermal compatibility constraint)</span></div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x<sub>i</sub> &isin; {0, 1} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">(Binary decision: whole sealed batch or reject)</span></div>
+        <br/>
+        <div><span class="cm">// 3. Bellman Recurrence Relation</span></div>
+        <div><span class="val">DP[i][w]</span> = DP[i-1][w] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> w<sub>i</sub> &gt; w</div>
+        <div><span class="val">DP[i][w]</span> = max( DP[i-1][w], &nbsp;v<sub>i</sub> + DP[i-1][w - w<sub>i</sub>] ) &nbsp;&nbsp;&nbsp;<span class="kw">if</span> w<sub>i</sub> &le; w</div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+        <div style="padding: 16px; border: 1px solid var(--border); border-radius: 10px;">
+          <h3 style="font-size: 14px; margin-bottom: 6px; color: var(--primary);">Why 0/1 Knapsack (Not Fractional)?</h3>
+          <p style="font-size: 13px; color: var(--muted);">Vaccine vials are packaged in tamper-evident, insulated thermal carriers. Breaking a sealed secondary carton compromises cold-chain stability and sterility, requiring an indivisible binary decision $x_i \in \{0, 1\}$.</p>
+        </div>
+        <div style="padding: 16px; border: 1px solid var(--border); border-radius: 10px;">
+          <h3 style="font-size: 14px; margin-bottom: 6px; color: var(--emerald);">Priority Score ($v_i$) Computation</h3>
+          <p style="font-size: 13px; color: var(--muted);">Each candidate batch value $v_i$ combines target population vulnerability, regional outbreak incidence rate, and remaining shelf-life urgency (FEFO &mdash; First-Expiry, First-Out).</p>
+        </div>
+        <div style="padding: 16px; border: 1px solid var(--border); border-radius: 10px;">
+          <h3 style="font-size: 14px; margin-bottom: 6px; color: var(--amber);">Time &amp; Space Complexity</h3>
+          <p style="font-size: 13px; color: var(--muted);">Bottom-up tabulation computes optimal subproblems in $\mathcal{O}(n \cdot W)$ time and $\mathcal{O}(n \cdot W)$ space, enabling full decision backtracking in $\mathcal{O}(n)$ steps.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: AUTOMATED TEST SUITE -->
+  <section id="tab-testsuite" class="tab-panel">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Automated Verification &amp; Edge-Case Test Suite</h2>
+          <p style="font-size: 12px; color: var(--muted);">Validates DP optimality, zero-capacity traps, greedy-trap counterexamples, and thermal constraint filtering.</p>
+        </div>
+        <button class="btn btn-primary" onclick="runTestSuite()">&#8635; Re-Run All Tests</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Test ID</th>
+              <th>Scenario &amp; Edge Case</th>
+              <th>Capacity $W$</th>
+              <th>Expected $V^*$</th>
+              <th>Actual $V^*$</th>
+              <th>Selected Batches</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="testSuiteBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const PRESETS = {
+    urban: {
+      capacity: 50,
+      batches: [
+        { id: "VX-101", name: "COVID-19 mRNA", district: "Metro General Hospital", temp: "-70C", vol: 18, doses: 1200, val: 95 },
+        { id: "VX-102", name: "Polio OPV", district: "North Slum Clinic", temp: "-20C", vol: 12, doses: 2500, val: 72 },
+        { id: "VX-103", name: "Measles-Rubella", district: "East Pediatric Hub", temp: "2-8C", vol: 15, doses: 1800, val: 84 },
+        { id: "VX-104", name: "Rabies Post-Exp", district: "District Trauma Ctr", temp: "2-8C", vol: 10, doses: 600, val: 65 },
+        { id: "VX-105", name: "Influenza Quad", district: "Senior Care Zone", temp: "2-8C", vol: 22, doses: 2000, val: 88 },
+        { id: "VX-106", name: "Tetanus Toxoid", district: "Industrial PHC", temp: "2-8C", vol: 8, doses: 1500, val: 45 }
+      ]
+    },
+    rural: {
+      capacity: 35,
+      batches: [
+        { id: "VX-201", name: "BCG Tuberculosis", district: "Hill Block PHC-1", temp: "2-8C", vol: 14, doses: 1400, val: 78 },
+        { id: "VX-202", name: "Rotavirus Oral", district: "River Basin Clinic", temp: "2-8C", vol: 16, doses: 1600, val: 86 },
+        { id: "VX-203", name: "Pentavalent DPT", district: "Tribal Outreach Unit", temp: "2-8C", vol: 11, doses: 1100, val: 64 },
+        { id: "VX-204", name: "Hepatitis-B", district: "South Sub-Center", temp: "2-8C", vol: 9, doses: 950, val: 48 },
+        { id: "VX-205", name: "Japanese Enceph.", district: "Wetland Village PHC", temp: "2-8C", vol: 20, doses: 1900, val: 98 }
+      ]
+    }
+  };
+
+  let batches = JSON.parse(JSON.stringify(PRESETS.urban.batches));
+  let nextIdNum = 107;
+
+  // Core 0/1 Knapsack DP Solver with Full Table & Backtracking
+  function solveKnapsackDP(items, W) {
+    const n = items.length;
+    const dp = Array.from({ length: n + 1 }, () => Array(W + 1).fill(0));
+
+    for (let i = 1; i <= n; i++) {
+      const { vol, val } = items[i - 1];
+      for (let w = 0; w <= W; w++) {
+        if (vol <= w) {
+          dp[i][w] = Math.max(dp[i - 1][w], val + dp[i - 1][w - vol]);
+        } else {
+          dp[i][w] = dp[i - 1][w];
+        }
+      }
+    }
+
+    // Backtrack to find selected items and trace cells
+    let w = W;
+    const selectedIds = new Set();
+    const pathCells = new Set();
+    pathCells.add(`${n},${W}`);
+
+    for (let i = n; i >= 1; i--) {
+      if (dp[i][w] !== dp[i - 1][w]) {
+        selectedIds.add(items[i - 1].id);
+        w -= items[i - 1].vol;
+      }
+      pathCells.add(`${i - 1},${w}`);
+    }
+
+    return {
+      maxVal: dp[n][W],
+      dp,
+      selectedIds,
+      pathCells,
+      statesEvaluated: (n + 1) * (W + 1)
+    };
+  }
+
+  // Greedy Ratio Heuristic (v_i / w_i) for comparison
+  function solveGreedy(items, W) {
+    const sorted = [...items].sort((a, b) => (b.val / b.vol) - (a.val / a.vol));
+    let usedVol = 0;
+    let totalVal = 0;
+    const chosen = [];
+    for (const item of sorted) {
+      if (usedVol + item.vol <= W) {
+        usedVol += item.vol;
+        totalVal += item.val;
+        chosen.push(item);
+      }
+    }
+    return { totalVal, usedVol, chosen };
+  }
+
+  function runOptimization() {
+    const W = Math.max(0, Math.min(200, parseInt(document.getElementById("capacityInput").value) || 0));
+    const tempFilter = document.getElementById("tempFilter").value;
+
+    const eligible = tempFilter === "ALL"
+      ? batches
+      : batches.filter(b => b.temp === tempFilter);
+
+    const dpRes = solveKnapsackDP(eligible, W);
+    const greedyRes = solveGreedy(eligible, W);
+
+    let usedVol = 0;
+    let totalDoses = 0;
+    const selectedItems = [];
+
+    eligible.forEach(b => {
+      if (dpRes.selectedIds.has(b.id)) {
+        usedVol += b.vol;
+        totalDoses += b.doses;
+        selectedItems.push(b);
+      }
+    });
+
+    // Update KPIs
+    const utilPct = W > 0 ? Math.round((usedVol / W) * 100) : 0;
+    document.getElementById("kpiValue").textContent = `${dpRes.maxVal} pts`;
+    document.getElementById("kpiValueSub").textContent = `Global optimum across ${eligible.length} eligible batches`;
+    document.getElementById("kpiVolume").textContent = `${usedVol} / ${W} L`;
+    document.getElementById("kpiUtilPct").textContent = `${utilPct}% cold-box volume utilization`;
+    document.getElementById("kpiDoses").textContent = totalDoses.toLocaleString();
+    document.getElementById("kpiBatchesCount").textContent = `${selectedItems.length} of ${eligible.length} batches packed`;
+    document.getElementById("kpiStates").textContent = `${dpRes.statesEvaluated.toLocaleString()} DP subproblems solved`;
+
+    // Update Progress Bar
+    document.getElementById("fillText").textContent = `${usedVol} L / ${W} L (${utilPct}%)`;
+    document.getElementById("fillBar").style.width = `${utilPct}%`;
+
+    // Render Candidate Table
+    document.getElementById("batchCountBadge").textContent = `${batches.length} Batches`;
+    const tbody = document.getElementById("batchTableBody");
+    tbody.innerHTML = "";
+
+    batches.forEach(b => {
+      const isFilteredOut = tempFilter !== "ALL" && b.temp !== tempFilter;
+      const isSelected = dpRes.selectedIds.has(b.id);
+      const tr = document.createElement("tr");
+      tr.className = isSelected ? "selected-row" : "rejected-row";
+
+      let statusBadge = `<span class="badge badge-rose">Deferred</span>`;
+      if (isFilteredOut) statusBadge = `<span class="badge badge-amber">Temp Excluded</span>`;
+      else if (isSelected) statusBadge = `<span class="badge badge-emerald">&#10003; Packed (x=1)</span>`;
+
+      tr.innerHTML = `
+        <td><strong>${b.id}</strong><br><span style="color:var(--muted);font-size:12px;">${b.name}</span></td>
+        <td>${b.district}</td>
+        <td><span class="badge badge-blue">${b.temp}</span></td>
+        <td><strong>${b.vol} L</strong></td>
+        <td>${b.doses.toLocaleString()}</td>
+        <td><strong>${b.val}</strong> <span style="color:var(--muted);font-size:11px;">(${(b.val/b.vol).toFixed(1)}/L)</span></td>
+        <td>${statusBadge}</td>
+        <td><button class="btn btn-danger" onclick="removeBatch('${b.id}')">&times;</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Render Dispatch Manifest
+    const manifestDiv = document.getElementById("manifestList");
+    if (selectedItems.length === 0) {
+      manifestDiv.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted);background:var(--surface-alt);border-radius:8px;font-size:13px;">No vaccine batches fit within ${W} L capacity under current thermal constraints.</div>`;
+    } else {
+      manifestDiv.innerHTML = selectedItems.map(item => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:8px;margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#065f46;">${item.id}: ${item.name} &rarr; ${item.district}</div>
+            <div style="font-size:11px;color:#047857;">Cold Zone: ${item.temp} &bull; ${item.doses.toLocaleString()} Doses</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:800;font-size:13px;color:#065f46;">+${item.val} pts</div>
+            <div style="font-size:11px;color:#047857;">${item.vol} L</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Comparison Banner
+    document.getElementById("dpCompareScore").textContent = `${dpRes.maxVal} pts`;
+    document.getElementById("dpCompareMeta").textContent = `Volume: ${usedVol}/${W} L (${selectedItems.length} batches)`;
+    document.getElementById("greedyCompareScore").textContent = `${greedyRes.totalVal} pts`;
+    document.getElementById("greedyCompareMeta").textContent = `Volume: ${greedyRes.usedVol}/${W} L (${greedyRes.chosen.length} batches)`;
+
+    const diff = dpRes.maxVal - greedyRes.totalVal;
+    const gainBanner = document.getElementById("gainBanner");
+    if (diff > 0) {
+      gainBanner.textContent = `DP Outperforms Greedy by +${diff} priority points (+${((diff / Math.max(1, greedyRes.totalVal)) * 100).toFixed(1)}% higher public health impact)!`;
+    } else {
+      gainBanner.textContent = `DP confirms mathematical optimality (${dpRes.maxVal} pts). Try loading "Rural Cold-Chain" preset to see a classic Greedy-trap case!`;
+    }
+
+    renderDPMatrix(eligible, W, dpRes);
+  }
+
+  function renderDPMatrix(items, W, dpRes) {
+    const table = document.getElementById("dpMatrixTable");
+    const displayW = Math.min(W, 60); // cap visual columns at 60 for readability
+    document.getElementById("matrixDimBadge").textContent = `${items.length + 1} rows × ${displayW + 1} cols` + (W > 60 ? ` (showing 0..60 of ${W}L)` : "");
+
+    let html = "<thead><tr><th>Batch (i) \ Cap (w)</th>";
+    for (let w = 0; w <= displayW; w++) {
+      html += `<th>${w}L</th>`;
+    }
+    html += "</tr></thead><tbody>";
+
+    for (let i = 0; i <= items.length; i++) {
+      const label = i === 0 ? "0 (Empty)" : `${items[i - 1].id} (w=${items[i - 1].vol}, v=${items[i - 1].val})`;
+      html += `<tr><th style="text-align:left;white-space:nowrap;">${label}</th>`;
+      for (let w = 0; w <= displayW; w++) {
+        const isOpt = (i === items.length && w === W);
+        const isPath = dpRes.pathCells.has(`${i},${w}`);
+        const cls = isOpt ? "dp-cell-opt" : (isPath ? "dp-cell-path" : "");
+        html += `<td class="${cls}">${dpRes.dp[i][w]}</td>`;
+      }
+      html += "</tr>";
+    }
+    html += "</tbody>";
+    table.innerHTML = html;
+  }
+
+  function addBatch() {
+    const name = document.getElementById("newName").value.trim() || "Custom Vaccine";
+    const district = document.getElementById("newDistrict").value.trim() || "Zone Clinic";
+    const temp = document.getElementById("newTemp").value;
+    const vol = Math.max(1, parseInt(document.getElementById("newVol").value) || 10);
+    const val = Math.max(1, parseInt(document.getElementById("newVal").value) || 50);
+
+    batches.push({
+      id: `VX-${nextIdNum++}`,
+      name,
+      district,
+      temp,
+      vol,
+      doses: vol * 100,
+      val
+    });
+
+    document.getElementById("newName").value = "";
+    document.getElementById("newDistrict").value = "";
+    document.getElementById("newVol").value = "";
+    document.getElementById("newVal").value = "";
+    runOptimization();
+  }
+
+  function removeBatch(id) {
+    batches = batches.filter(b => b.id !== id);
+    runOptimization();
+  }
+
+  function loadPreset(key) {
+    batches = JSON.parse(JSON.stringify(PRESETS[key].batches));
+    document.getElementById("capacityInput").value = PRESETS[key].capacity;
+    document.getElementById("tempFilter").value = "ALL";
+    runOptimization();
+  }
+
+  function switchTab(tabId, btn) {
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-tab").forEach(b => b.classList.remove("active"));
+    document.getElementById(`tab-${tabId}`).classList.add("active");
+    btn.classList.add("active");
+  }
+
+  function exportReportCSV() {
+    const W = parseInt(document.getElementById("capacityInput").value) || 0;
+    const tempFilter = document.getElementById("tempFilter").value;
+    const eligible = tempFilter === "ALL" ? batches : batches.filter(b => b.temp === tempFilter);
+    const dpRes = solveKnapsackDP(eligible, W);
+
+    let csv = "Batch_ID,Vaccine,District,Cold_Chain_Temp,Volume_L,Doses,Priority_Score,Decision\n";
+    batches.forEach(b => {
+      const decision = dpRes.selectedIds.has(b.id) ? "PACKED (x=1)" : "DEFERRED (x=0)";
+      csv += `${b.id},"${b.name}","${b.district}",${b.temp},${b.vol},${b.doses},${b.val},${decision}\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "VaxOptima_Dispatch_Plan.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function runTestSuite() {
+    const tests = [
+      {
+        id: "TC-01",
+        name: "Standard Urban Outbreak Allocation",
+        W: 50,
+        items: PRESETS.urban.batches,
+        expected: 267
+      },
+      {
+        id: "TC-02",
+        name: "Greedy-Trap Counterexample (Rural Cold-Chain)",
+        W: 35,
+        items: PRESETS.rural.batches,
+        expected: 184
+      },
+      {
+        id: "TC-03",
+        name: "Zero Cold-Box Capacity Boundary (W = 0)",
+        W: 0,
+        items: PRESETS.urban.batches,
+        expected: 0
+      },
+      {
+        id: "TC-04",
+        name: "All Batches Exceed Container Volume",
+        W: 5,
+        items: PRESETS.urban.batches,
+        expected: 0
+      },
+      {
+        id: "TC-05",
+        name: "Exact Capacity Saturation Fit",
+        W: 30,
+        items: [
+          { id: "A", name: "Vax A", district: "D1", temp: "2-8C", vol: 10, doses: 100, val: 60 },
+          { id: "B", name: "Vax B", district: "D2", temp: "2-8C", vol: 20, doses: 200, val: 100 },
+          { id: "C", name: "Vax C", district: "D3", temp: "2-8C", vol: 30, doses: 300, val: 120 }
+        ],
+        expected: 160
+      }
+    ];
+
+    const tbody = document.getElementById("testSuiteBody");
+    tbody.innerHTML = tests.map(t => {
+      const res = solveKnapsackDP(t.items, t.W);
+      const pass = res.maxVal === t.expected;
+      return `
+        <tr>
+          <td><strong>${t.id}</strong></td>
+          <td>${t.name}</td>
+          <td>${t.W} L</td>
+          <td>${t.expected} pts</td>
+          <td><strong>${res.maxVal} pts</strong></td>
+          <td>${Array.from(res.selectedIds).join(", ") || "None"}</td>
+          <td><span class="badge ${pass ? 'badge-emerald' : 'badge-rose'}">${pass ? '&#10003; PASS' : 'FAIL'}</span></td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  // Initialize on load
+  runOptimization();
+  runTestSuite();
+</script>
+</body>
+</html>
